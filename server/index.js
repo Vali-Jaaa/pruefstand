@@ -309,6 +309,26 @@ async function behandeln(req, res) {
   try {
     /* --- Zustand und Anmeldung --- */
 
+    /* Zeigt, ob der Anmeldetoken sauber im Container ankommt - ohne ihn
+       preiszugeben. Laenge und Raender genuegen, um abgeschnittene Werte,
+       Anfuehrungszeichen oder Zeilenumbrueche zu erkennen. Nur fuer Angemeldete. */
+    if (pfad === '/api/diagnose' && m === 'GET') {
+      if (nurAdmin()) return;
+      const t = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
+      return antwort(res, 200, {
+        tokenVorhanden: Boolean(t),
+        laenge: t.length,
+        beginnt: t.slice(0, 14),
+        endet: t.slice(-4),
+        beginntRichtig: t.startsWith('sk-ant-oat'),
+        enthaeltZeilenumbruch: /[\r\n]/.test(t),
+        enthaeltAnfuehrungszeichen: /["']/.test(t),
+        randLeerzeichen: t !== t.trim(),
+        benutzer: typeof process.getuid === 'function' ? process.getuid() : null,
+        arbeitsverzeichnis: process.cwd()
+      });
+    }
+
     if (pfad === '/api/status' && m === 'GET') {
       const auftraege = auftraegeListe({ limit: 100000 });
       return antwort(res, 200, {
