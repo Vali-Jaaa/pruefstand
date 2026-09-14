@@ -583,6 +583,21 @@ async function wissenLaden() {
 
 /* ---------- Einstellungen ---------- */
 
+/* Zeigt, ob der Token vollstaendig angekommen ist. Beim Weg ueber .env sind
+   mehrfach Zeichen verlorengegangen, ohne dass es jemand bemerkt haette. */
+function tokenStandZeigen(laenge) {
+  const el = $('#e-token-stand');
+  if (!laenge) {
+    el.textContent = ' Zurzeit ist hier keiner hinterlegt — es gilt der Wert aus der .env.';
+    el.style.color = 'var(--grafit)';
+    return;
+  }
+  const vollstaendig = laenge >= 105;
+  el.textContent = ` Hinterlegt: ${laenge} Zeichen` +
+    (vollstaendig ? ' — sieht vollständig aus.' : ' — das ist zu kurz, er wurde beim Kopieren abgeschnitten.');
+  el.style.color = vollstaendig ? 'var(--siegel)' : 'var(--abweichung)';
+}
+
 async function einstellungenLaden() {
   einstellungen = await hole('/api/einstellungen');
   $('#e-modell').value = einstellungen.modell || 'sonnet';
@@ -591,6 +606,7 @@ async function einstellungenLaden() {
   $('#e-aufbewahrung').value = einstellungen.aufbewahrungTage ?? 90;
   $('#e-werkzeuge').value = (einstellungen.werkzeuge || []).join(',');
   $('#e-zugang').value = einstellungen.zugangSchutz || 'offen';
+  tokenStandZeigen(einstellungen.claudeTokenLaenge || 0);
   $('#e-startanweisung').value = einstellungen.startAnweisung || '';
   importZeichnen();
 }
@@ -607,8 +623,13 @@ async function einstellungenSpeichern() {
       zugangSchutz: $('#e-zugang').value
     };
     if ($('#e-passwort').value) koerper.neuesPasswort = $('#e-passwort').value;
+    // Nur senden, wenn wirklich etwas eingetragen wurde - sonst bliebe er leer.
+    const tok = $('#e-claudetoken').value.trim();
+    if (tok) koerper.claudeToken = tok;
     einstellungen = await hole('/api/einstellungen', { method: 'PUT', body: JSON.stringify(koerper) });
     $('#e-passwort').value = '';
+    $('#e-claudetoken').value = '';
+    tokenStandZeigen(einstellungen.claudeTokenLaenge || 0);
     importZeichnen();
     meldung($('#e-meldung'), 'Gespeichert.', 'hinweis');
   } catch (err) {

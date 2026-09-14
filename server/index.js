@@ -314,9 +314,14 @@ async function behandeln(req, res) {
        Anfuehrungszeichen oder Zeilenumbrueche zu erkennen. Nur fuer Angemeldete. */
     if (pfad === '/api/diagnose' && m === 'GET') {
       if (nurAdmin()) return;
-      const t = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
+      const gespeichert = einstellungenLesen().claudeToken || '';
+      const ausUmgebung = process.env.CLAUDE_CODE_OAUTH_TOKEN || '';
+      const t = gespeichert || ausUmgebung;
       return antwort(res, 200, {
         tokenVorhanden: Boolean(t),
+        quelle: gespeichert ? 'Admin-Center' : (ausUmgebung ? '.env' : 'keine'),
+        laengeAdminCenter: gespeichert.length,
+        laengeUmgebung: ausUmgebung.length,
         laenge: t.length,
         beginnt: t.slice(0, 14),
         endet: t.slice(-4),
@@ -565,7 +570,8 @@ async function behandeln(req, res) {
 
     if (pfad === '/api/einstellungen' && m === 'GET') {
       if (nurAdmin()) return;
-      const { adminPasswort, ...rest } = einstellungenLesen();
+      const { adminPasswort, claudeToken, ...rest } = einstellungenLesen();
+      rest.claudeTokenLaenge = (claudeToken || '').length;
       return antwort(res, 200, rest);
     }
 
@@ -586,7 +592,15 @@ async function behandeln(req, res) {
       if (koerper.schluesselErneuern) {
         neu.importSchluessel = crypto.randomBytes(24).toString('hex');
       }
-      const { adminPasswort, ...rest } = einstellungenSchreiben(neu);
+      /* Der Anmeldetoken fuer Claude. Ueber .env ging bei jedem Versuch etwas
+         verloren - hier kommt er unveraendert an und die Laenge ist sofort
+         sichtbar. Gespeichert wird er, zurueckgegeben nie. */
+      if (typeof koerper.claudeToken === 'string') {
+        const t = koerper.claudeToken.trim();
+        neu.claudeToken = t || null;
+      }
+      const { adminPasswort, claudeToken, ...rest } = einstellungenSchreiben(neu);
+      rest.claudeTokenLaenge = (claudeToken || '').length;
       wecken();
       return antwort(res, 200, rest);
     }

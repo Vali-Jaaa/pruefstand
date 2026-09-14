@@ -168,9 +168,14 @@ function ausfuehren(aid) {
       anweisung
     ];
 
+    /* Der im Admin-Center hinterlegte Token hat Vorrang vor der Umgebung -
+       so laesst er sich aendern, ohne den Container neu zu erstellen. */
+    const umgebung = { ...process.env };
+    if (e.claudeToken) umgebung.CLAUDE_CODE_OAUTH_TOKEN = e.claudeToken;
+
     const kind = spawn(CLAUDE_BIN, argumente, {
       cwd: arbeit,
-      env: { ...process.env },
+      env: umgebung,
       stdio: ['ignore', 'pipe', 'pipe']
     });
     laufend.set(aid, kind);

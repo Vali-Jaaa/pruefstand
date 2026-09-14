@@ -283,6 +283,15 @@
     </div>
 
     <div class="gruppe">
+      <label class="feldname" for="e-claudetoken">Anmeldetoken für Claude</label>
+      <input type="password" id="e-claudetoken" placeholder="sk-ant-oat01-… — leer lassen = unverändert" autocomplete="off">
+      <p class="blatt-text" style="margin-top:6px;font-size:13px">
+        Erzeugen mit <span style="font-family:var(--mono)">claude setup-token</span>.
+        Hier eingetragen gilt er sofort — der Container muss nicht neu erstellt werden.
+        <span id="e-token-stand"></span></p>
+    </div>
+
+    <div class="gruppe">
       <label class="feldname" for="e-zugang">Zugang zum Prüfstand</label>
       <select id="e-zugang">
         <option value="offen">Offen — jeder im Netz darf Dateien ablegen</option>
