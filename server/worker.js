@@ -147,12 +147,21 @@ function ausfuehren(aid) {
     auftrag.modell    = modell;
     auftragSchreiben(auftrag);
 
+    /* Claude Code verweigert "bypassPermissions", wenn es mit Systemrechten
+       laeuft - eine Sicherheitssperre, die man nicht umgehen soll. Im Container
+       ist genau das aber der Normalfall, damit der eingebundene Datenordner
+       beschreibbar bleibt. "acceptEdits" kommt ohne Rueckfragen aus, solange
+       die benoetigten Werkzeuge ueber --allowedTools ausdruecklich erlaubt
+       sind; das ist hier der Fall. */
+    const alsSystembenutzer = typeof process.getuid === 'function' && process.getuid() === 0;
+    const rechtemodus = alsSystembenutzer ? 'acceptEdits' : 'bypassPermissions';
+
     const argumente = [
       '-p',
       '--append-system-prompt-file', '.anweisung.txt',
       '--output-format', 'json',
       '--model', modell,
-      '--permission-mode', 'bypassPermissions',
+      '--permission-mode', rechtemodus,
       '--allowedTools', werkzeuge.join(','),
       '--no-session-persistence',
       '--strict-mcp-config',
