@@ -78,7 +78,8 @@ function blattZeigen(name) {
 /* ---------- Module ---------- */
 
 async function moduleLaden() {
-  module = await hole('/api/profil');
+  // Das Admin-Center verwaltet alle Module, nicht nur die freigeschalteten.
+  module = await hole('/api/profil?alle=1');
   moduleZeichnen();
 }
 

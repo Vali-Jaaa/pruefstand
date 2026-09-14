@@ -375,9 +375,13 @@ async function behandeln(req, res) {
     /* --- Profile --- */
 
     if (pfad === '/api/profil' && m === 'GET') {
-      // Das Dashboard braucht nur die freigeschalteten, das Admin-Center alle.
+      /* Der Pruefstand zeigt ausschliesslich freigeschaltete Module - auch dann,
+         wenn gerade jemand mit Admin-Rechten davorsitzt. Sonst waere die
+         Freischaltung wirkungslos und die Liste unbrauchbar lang. Nur das
+         Admin-Center fragt mit "?alle=1" ausdruecklich alle ab. */
       const alle = profileListe();
-      const liste = (istAdmin ? alle : alle.filter(p => p.aktiv)).map(p => ({
+      const willAlle = istAdmin && url.searchParams.get('alle') === '1';
+      const liste = (willAlle ? alle : alle.filter(p => p.aktiv)).map(p => ({
         id: p.id, name: p.name, aktiv: p.aktiv,
         anweisungZeichen: (p.anweisung || '').length,
         wissen: (p.wissen || []).length,
