@@ -125,21 +125,38 @@ function alsBase64(datei) {
   });
 }
 
-async function dateienAufnehmen(fileList) {
+async function dateienAufnehmen(auswahl) {
   meldung($('#ablage-meldung'), null);
-  for (const f of fileList) {
+  const liste = Array.from(auswahl);
+  const uebersprungen = [];
+
+  for (const f of liste) {
     if (f.size > 64 * 1024 * 1024) {
-      meldung($('#ablage-meldung'), `"${f.name}" ist größer als 64 MB und wurde übersprungen.`);
+      uebersprungen.push(`${f.name} (größer als 64 MB)`);
       continue;
     }
     try {
       dateien.push({ name: f.name, groesse: f.size, inhaltBase64: await alsBase64(f) });
-    } catch (err) {
-      meldung($('#ablage-meldung'), err.message);
+    } catch {
+      uebersprungen.push(`${f.name} (nicht lesbar)`);
     }
   }
   dateilisteZeichnen();
   knopfPruefen();
+
+  // Sichtbar machen, wenn nicht alles angekommen ist - frueher fiel das nicht auf.
+  if (uebersprungen.length) {
+    meldung($('#ablage-meldung'),
+      `Nicht übernommen: ${uebersprungen.join(', ')}. ${liste.length - uebersprungen.length} von ${liste.length} Dateien liegen bereit.`);
+  }
+
+  // Gesamtmenge im Blick behalten: alles geht in einer Anfrage zum Server.
+  const gesamt = dateien.reduce((a, d) => a + d.groesse, 0);
+  if (gesamt > 60 * 1024 * 1024) {
+    meldung($('#ablage-meldung'),
+      `${bytesLesbar(gesamt)} insgesamt — das ist viel für eine Übertragung. ` +
+      `Wenn der Start fehlschlägt, die Dateien auf zwei Aufträge aufteilen.`, 'hinweis');
+  }
 }
 
 function angabenZeichnen() {
@@ -502,13 +519,25 @@ async function los() {
   const wahl = $('#dateiwahl');
   feld.onclick = () => wahl.click();
   feld.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); wahl.click(); } };
-  wahl.onchange = () => { dateienAufnehmen(wahl.files); wahl.value = ''; };
+  /* Die Dateiliste muss sofort in ein eigenes Array uebernommen werden.
+     dateienAufnehmen liest asynchron; wuerde man das Eingabefeld vorher oder
+     waehrenddessen leeren, bricht die Schleife nach der ersten Datei ab und
+     die uebrigen verschwinden lautlos. */
+  wahl.onchange = () => {
+    const ausgewaehlt = Array.from(wahl.files);
+    wahl.value = '';
+    dateienAufnehmen(ausgewaehlt);
+  };
 
   for (const ereignis of ['dragenter', 'dragover']) {
     feld.addEventListener(ereignis, (e) => { e.preventDefault(); feld.classList.add('bereit'); });
   }
   feld.addEventListener('dragleave', () => { if (!dateien.length) feld.classList.remove('bereit'); });
-  feld.addEventListener('drop', (e) => { e.preventDefault(); dateienAufnehmen(e.dataTransfer.files); });
+  feld.addEventListener('drop', (e) => {
+    e.preventDefault();
+    // dataTransfer ist nach dem Ereignis nicht mehr gueltig - erst kopieren.
+    dateienAufnehmen(Array.from(e.dataTransfer.files));
+  });
   // Fallback: Ablegen irgendwo auf der Seite soll die Seite nicht ersetzen.
   window.addEventListener('dragover', (e) => e.preventDefault());
   window.addEventListener('drop', (e) => e.preventDefault());

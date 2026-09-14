@@ -60,7 +60,9 @@ function koerperLesen(req, grenze = MAX_UPLOAD) {
     req.on('data', d => {
       laenge += d.length;
       if (laenge > grenze) {
-        fehler(new Error(`Anfrage zu gross (Grenze ${Math.round(grenze / 1048576)} MB).`));
+        fehler(new Error(
+          `Anfrage zu gross: Grenze ${Math.round(grenze / 1048576)} MB. ` +
+          `Bei mehreren Dateien die Menge aufteilen und in zwei Auftraegen ablegen.`));
         req.destroy();
         return;
       }

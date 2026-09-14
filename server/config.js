@@ -16,8 +16,10 @@ export const HOST = process.env.HOST || '0.0.0.0';
 // Pfad zur Claude-Code-CLI. Im Container liegt sie global.
 export const CLAUDE_BIN = process.env.CLAUDE_BIN || 'claude';
 
-// Obergrenze fuer eine hochgeladene Datei (Bytes).
-export const MAX_UPLOAD = Number(process.env.PEFC_MAX_UPLOAD || 64 * 1024 * 1024);
+// Obergrenze fuer eine komplette Anfrage (Bytes) - bei mehreren Dateien zaehlt
+// die Summe, plus rund ein Drittel Aufschlag durch die Kodierung. Darueber
+// liegt die Grenze von Cloudflare (100 MB), die wir nicht ueberschreiten wollen.
+export const MAX_UPLOAD = Number(process.env.PEFC_MAX_UPLOAD || 96 * 1024 * 1024);
 
 export const STANDARD_EINSTELLUNGEN = {
   modell: 'sonnet',
