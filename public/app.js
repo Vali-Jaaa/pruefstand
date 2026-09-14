@@ -9,6 +9,9 @@ let module = [];
 let letzterStand = '';
 let uhrzeitTakt = null;
 let token = sessionStorage.getItem('pruefstand-token') || null;
+// Einmal geholte Ergebnisse behalten - sonst laedt jedes Neuzeichnen alles neu.
+const volltexte = new Map();
+let aktuellerTakt = 0;
 
 /* ---------- Schnittstelle ---------- */
 
@@ -357,17 +360,36 @@ function auftragZeichnen(a) {
     const kopieren = text(document.createElement('button'), 'Text kopieren');
     kopieren.className = 'knopf leise klein';
     kopieren.onclick = async () => {
-      const voll = await hole(`/api/auftrag/${a.id}`);
-      await navigator.clipboard.writeText(voll.ergebnis || '');
-      kopieren.textContent = 'Kopiert';
-      setTimeout(() => { kopieren.textContent = 'Text kopieren'; }, 1600);
+      try {
+        await navigator.clipboard.writeText(await ergebnisText(a.id));
+        kopieren.textContent = 'Kopiert';
+      } catch {
+        kopieren.textContent = 'Kopieren fehlgeschlagen';
+      }
+      setTimeout(() => { kopieren.textContent = 'Text kopieren'; }, 1800);
     };
     rechts.append(kopieren);
 
-    const laden = document.createElement('a');
+    /* Frueher ein einfacher Link. Der kann den Anmeldekopf nicht mitschicken -
+       seit der Zugang auf "Passwort" steht, kam statt der Datei eine
+       Fehlermeldung. Deshalb holen wir sie angemeldet und reichen sie weiter. */
+    const laden = text(document.createElement('button'), 'Herunterladen');
     laden.className = 'knopf leise klein';
-    laden.href = `/api/auftrag/${a.id}/ergebnis`;
-    laden.textContent = 'Herunterladen';
+    laden.onclick = async () => {
+      try {
+        const inhalt = await ergebnisText(a.id);
+        const name = `ergebnis-${(a.dateien?.[0] || a.id).replace(/\.[^.]+$/, '')}.md`;
+        const ziel = URL.createObjectURL(new Blob([inhalt], { type: 'text/markdown;charset=utf-8' }));
+        const link = Object.assign(document.createElement('a'), { href: ziel, download: name });
+        document.body.append(link);
+        link.click();
+        link.remove();
+        setTimeout(() => URL.revokeObjectURL(ziel), 5000);
+      } catch (err) {
+        laden.textContent = 'Fehlgeschlagen';
+        setTimeout(() => { laden.textContent = 'Herunterladen'; }, 1800);
+      }
+    };
     rechts.append(laden);
   }
 
@@ -398,10 +420,24 @@ function auftragZeichnen(a) {
 }
 
 async function volltextNachladen(aid, ziel) {
+  const bekannt = volltexte.get(aid);
+  if (bekannt !== undefined) { ziel.textContent = bekannt; return; }
   try {
     const voll = await hole(`/api/auftrag/${aid}`);
-    if (voll?.ergebnis && ziel.isConnected) ziel.textContent = voll.ergebnis;
+    if (voll?.ergebnis) {
+      volltexte.set(aid, voll.ergebnis);
+      if (ziel.isConnected) ziel.textContent = voll.ergebnis;
+    }
   } catch { /* Vorschau bleibt stehen */ }
+}
+
+/** Ergebnistext, möglichst aus dem Zwischenspeicher. */
+async function ergebnisText(aid) {
+  if (volltexte.has(aid)) return volltexte.get(aid);
+  const voll = await hole(`/api/auftrag/${aid}`);
+  const t = voll?.ergebnis || '';
+  volltexte.set(aid, t);
+  return t;
 }
 
 async function auftraegeLaden() {
@@ -444,6 +480,9 @@ async function auftraegeLaden() {
   $('#zaehler').textContent = offen
     ? `${offen} offen · ${liste.length} gesamt`
     : `${liste.length} gesamt`;
+
+  // Solange nichts arbeitet, reicht ein ruhigerer Takt.
+  taktSetzen(offen ? 2500 : 12000);
 }
 
 /* ---------- Auftrag abschicken ---------- */
@@ -500,11 +539,18 @@ function themaSetzen(wert) {
 
 /* ---------- Start ---------- */
 
+function taktSetzen(ms) {
+  if (ms === aktuellerTakt) return;
+  aktuellerTakt = ms;
+  clearInterval(uhrzeitTakt);
+  uhrzeitTakt = setInterval(auftraegeLaden, ms);
+}
+
 function starten_ueberwachung() {
   moduleLaden();
   auftraegeLaden();
-  clearInterval(uhrzeitTakt);
-  uhrzeitTakt = setInterval(auftraegeLaden, 2500);
+  aktuellerTakt = 0;
+  taktSetzen(2500);
 }
 
 async function los() {

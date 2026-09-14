@@ -167,6 +167,23 @@ export function wissenLoeschen(hash) {
   schreiben(path.join(WISSEN_DIR, 'index.json'), index);
 }
 
+/* ---------- Sitzungen ---------- */
+/* Lagen bisher nur im Arbeitsspeicher. Da sich der Dienst bei jedem Update
+   selbst neu startet, wurde man dabei jedes Mal abgemeldet. */
+
+const SITZUNGS_DATEI = path.join(DATEN, 'sitzungen.json');
+
+export function sitzungenLesen() {
+  const alle = lesen(SITZUNGS_DATEI, {});
+  const jetzt = Date.now();
+  // Abgelaufene gleich beim Lesen aussortieren.
+  return Object.fromEntries(Object.entries(alle).filter(([, ablauf]) => ablauf > jetzt));
+}
+
+export function sitzungenSchreiben(sitzungen) {
+  schreiben(SITZUNGS_DATEI, sitzungen);
+}
+
 /* ---------- Auftraege ---------- */
 
 export function auftragOrdner(aid) {
@@ -186,11 +203,27 @@ export function auftragSchreiben(auftrag) {
 
 export function auftraegeListe({ limit = 200 } = {}) {
   if (!fs.existsSync(AUFTRAG_DIR)) return [];
-  return fs.readdirSync(AUFTRAG_DIR)
-    .map(a => auftragLesen(a))
-    .filter(Boolean)
-    .sort((a, b) => (b.angelegt || '').localeCompare(a.angelegt || ''))
+
+  /* Frueher wurde jede Auftragsdatei gelesen und erst danach gekuerzt - bei der
+     Abfrage alle 2,5 Sekunden waechst das mit der Zahl der Auftraege ins
+     Unangenehme. Jetzt entscheidet die Aenderungszeit des Ordners, was
+     ueberhaupt gelesen wird; ein stat ist um ein Vielfaches billiger als
+     Lesen und Auswerten der JSON-Datei. */
+  const eintraege = fs.readdirSync(AUFTRAG_DIR, { withFileTypes: true })
+    .filter(e => e.isDirectory())
+    .map(e => {
+      let zeit = 0;
+      try { zeit = fs.statSync(path.join(AUFTRAG_DIR, e.name, 'auftrag.json')).mtimeMs; }
+      catch { /* Ordner ohne Auftragsdatei - faellt unten durch den Filter */ }
+      return { name: e.name, zeit };
+    })
+    .sort((a, b) => b.zeit - a.zeit)
     .slice(0, limit);
+
+  return eintraege
+    .map(e => auftragLesen(e.name))
+    .filter(Boolean)
+    .sort((a, b) => (b.angelegt || '').localeCompare(a.angelegt || ''));
 }
 
 export function auftragLoeschen(aid) {

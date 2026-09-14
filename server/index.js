@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { PORT, HOST, OEFFENTLICH, MAX_UPLOAD, CLAUDE_BIN } from './config.js';
 import {
   id, kennung,
+  sitzungenLesen, sitzungenSchreiben,
   einstellungenLesen, einstellungenSchreiben,
   profileListe, profilLesen, profilSchreiben, profilLoeschen,
   wissenSpeichern, wissenIndex, wissenLoeschen,
@@ -15,8 +16,15 @@ import { wecken, abbrechen, beimStartAufraeumen } from './worker.js';
 
 /* ---------------- Anmeldung ---------------- */
 
-const sitzungen = new Map();   // token -> ablaufZeitpunkt
 const SITZUNG_DAUER = 12 * 3600 * 1000;
+
+// Beim Start uebernehmen, damit ein Update niemanden abmeldet.
+const sitzungen = new Map(Object.entries(sitzungenLesen()));
+
+function sitzungenSichern() {
+  try { sitzungenSchreiben(Object.fromEntries(sitzungen)); }
+  catch { /* Anmeldung funktioniert auch ohne Sicherung weiter */ }
+}
 
 function passwortHashen(passwort, salz = crypto.randomBytes(16).toString('hex')) {
   const hash = crypto.scryptSync(passwort, salz, 64).toString('hex');
@@ -37,7 +45,10 @@ function angemeldet(req) {
   const token = kopf.startsWith('Bearer ') ? kopf.slice(7) : null;
   if (!token) return false;
   const ablauf = sitzungen.get(token);
-  if (!ablauf || ablauf < Date.now()) { sitzungen.delete(token); return false; }
+  if (!ablauf || ablauf < Date.now()) {
+    if (sitzungen.delete(token)) sitzungenSichern();
+    return false;
+  }
   return true;
 }
 
@@ -86,6 +97,10 @@ const MIME = {
   '.svg': 'image/svg+xml',
   '.ico': 'image/x-icon'
 };
+
+/* Kennungen aus der Adresszeile duerfen niemals zu einem anderen Ordner
+   fuehren - nur die Zeichen, die kennung() auch erzeugt. */
+const KENNUNG_ERLAUBT = /^[a-z0-9][a-z0-9-]{0,79}$/;
 
 function statischAusliefern(res, pfad) {
   // Pfaddurchquerung ausschliessen: aufgeloester Pfad muss im public-Ordner liegen.
@@ -370,12 +385,14 @@ async function behandeln(req, res) {
       }
       const token = crypto.randomBytes(32).toString('hex');
       sitzungen.set(token, Date.now() + SITZUNG_DAUER);
+      sitzungenSichern();
       return antwort(res, 200, { token });
     }
 
     if (pfad === '/api/abmelden' && m === 'POST') {
       const kopf = req.headers.authorization || '';
       sitzungen.delete(kopf.startsWith('Bearer ') ? kopf.slice(7) : '');
+      sitzungenSichern();
       return antwort(res, 200, { ok: true });
     }
 
