@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="de" data-thema="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin-Center — Prüfstand</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stil.css">
+<style>
+  .reiter { display: flex; gap: 4px; padding: 0 28px; border-bottom: 1px solid var(--linie);
+            background: var(--karton); position: sticky; top: 61px; z-index: 15; flex-wrap: wrap; }
+  .reiter button { background: none; border: 0; border-bottom: 2px solid transparent;
+                   padding: 11px 14px; font: inherit; font-size: 14px; color: var(--grafit);
+                   cursor: pointer; margin-bottom: -1px; }
+  .reiter button[aria-selected="true"] { color: var(--tinte); border-bottom-color: var(--tinte); font-weight: 600; }
+  .blatt { padding: 26px 28px 60px; max-width: 940px; }
+  .zeile { display: grid; grid-template-columns: 1fr auto; gap: 14px; align-items: center;
+           padding: 12px 14px; border: 1px solid var(--linie); border-radius: var(--rand);
+           background: var(--karton); margin-bottom: 8px; }
+  .zeile-titel { font-weight: 600; }
+  .zeile-unter { font-family: var(--mono); font-size: 11px; color: var(--grafit); margin-top: 2px; }
+  .zeile-knoepfe { display: flex; gap: 6px; flex: none; }
+  .aus { opacity: .55; }
+  .gruppe { margin-bottom: 22px; }
+  .gruppe label.feldname { margin-top: 0; }
+  .zwei { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  .kasten { border: 1px solid var(--linie); background: var(--karton);
+            border-radius: var(--rand); padding: 18px 20px; margin-bottom: 18px; }
+  .kasten h3 { margin: 0 0 4px; font-size: 15px; }
+  .kasten p.erklaerung { margin: 0 0 14px; color: var(--grafit); font-size: 13.5px; }
+  pre.schnipsel { background: var(--papier); border: 1px solid var(--linie); border-radius: var(--rand);
+                  padding: 12px 14px; overflow-x: auto; font-family: var(--mono);
+                  font-size: 11.5px; line-height: 1.6; margin: 0; }
+  .schalter { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; }
+  h2.blatt-titel { font-size: 17px; margin: 0 0 4px; }
+  p.blatt-text { color: var(--grafit); margin: 0 0 20px; font-size: 14px; max-width: 62ch; }
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <h1 class="marke">Admin-Center</h1>
+  <span class="marke-sub">Prüfstand</span>
+  <div class="kopf-rechts">
+    <button class="knopf leise klein" id="thema-knopf">Ansicht</button>
+    <a class="knopf leise klein" href="index.html">Zum Prüfstand</a>
+    <button class="knopf leise klein versteckt" id="abmelden-knopf">Abmelden</button>
+  </div>
+</header>
+
+<!-- Anmeldung -->
+<section class="tor" id="anmeldung">
+  <h2>Anmelden</h2>
+  <p>Das Admin-Center verwaltet Module, Anweisungen und Einstellungen.</p>
+  <label class="feldname" for="passwort">Passwort</label>
+  <input type="password" id="passwort" autocomplete="current-password">
+  <button class="knopf breit" id="anmelden-knopf">Anmelden</button>
+  <p class="meldung versteckt" id="anmelde-fehler"></p>
+</section>
+
+<div id="bereich" class="versteckt">
+  <nav class="reiter" role="tablist">
+    <button role="tab" data-blatt="module"       aria-selected="true">Module</button>
+    <button role="tab" data-blatt="import"       aria-selected="false">Import aus claude.ai</button>
+    <button role="tab" data-blatt="wissen"       aria-selected="false">Referenzdateien</button>
+    <button role="tab" data-blatt="einstellungen" aria-selected="false">Einstellungen</button>
+  </nav>
+
+  <!-- Module -->
+  <section class="blatt" id="blatt-module">
+    <h2 class="blatt-titel">Module</h2>
+    <p class="blatt-text">Ein Modul entspricht einem früheren Claude-Projekt: Name, Anweisung und
+       hinterlegte Referenzdateien. Nur freigeschaltete Module erscheinen im Prüfstand.</p>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="knopf klein" id="neues-modul">Modul anlegen</button>
+      <input type="text" id="modul-suche" placeholder="Modul suchen …" style="max-width:280px">
+    </div>
+    <div id="modulliste"></div>
+  </section>
+
+  <!-- Modul bearbeiten -->
+  <section class="blatt versteckt" id="blatt-bearbeiten">
+    <h2 class="blatt-titel" id="bearbeiten-titel">Modul bearbeiten</h2>
+    <p class="blatt-text">Die Anweisung ist der Text, der dem Modell vor jeder Datei mitgegeben wird —
+       identisch zu den Projektanweisungen in claude.ai.</p>
+
+    <div class="gruppe">
+      <label class="feldname" for="b-name">Name</label>
+      <input type="text" id="b-name">
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="b-anweisung">Anweisung</label>
+      <textarea id="b-anweisung" rows="20"></textarea>
+    </div>
+
+    <div class="gruppe zwei">
+      <div>
+        <label class="feldname" for="b-modell">Modell</label>
+        <select id="b-modell">
+          <option value="">Standard aus Einstellungen</option>
+          <option value="sonnet">Sonnet — schnell, günstig</option>
+          <option value="opus">Opus — stärkste Ergebnisse</option>
+          <option value="haiku">Haiku — sehr schnell, einfache Aufgaben</option>
+        </select>
+      </div>
+      <div>
+        <label class="feldname" for="b-zeitlimit">Zeitlimit (Sekunden)</label>
+        <input type="number" id="b-zeitlimit" min="30" max="7200" placeholder="Standard">
+      </div>
+    </div>
+
+    <div class="gruppe" id="b-herkunft-gruppe" hidden>
+      <label class="feldname">Woraus abgeleitet</label>
+      <div id="b-herkunft"></div>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="b-startanweisung">Fester Text bei jedem Auftrag</label>
+      <textarea id="b-startanweisung" rows="5" placeholder="leer lassen = Standard aus den Einstellungen"></textarea>
+      <p class="blatt-text" style="margin-top:6px;font-size:13px">
+        Das, was du sonst bei jedem Mal in den Chat getippt hättest. Steht hier etwas,
+        wird es bei jedem Auftrag dieses Moduls mitgegeben — ohne dass jemand etwas
+        eintippen muss.</p>
+    </div>
+
+    <div class="gruppe">
+      <label class="schalter" style="margin-bottom:8px">
+        <input type="checkbox" id="b-freitext-aktiv"> Freies Textfeld im Prüfstand anzeigen
+      </label>
+      <p class="blatt-text" style="margin:0 0 10px;font-size:13px">
+        Für Module, bei denen jedes Mal etwas anderes dazugesagt werden muss. Der
+        eingetragene Text wird dem Auftrag angehängt.</p>
+      <div class="zwei">
+        <div>
+          <label class="feldname" for="b-freitext-beschriftung">Überschrift des Felds</label>
+          <input type="text" id="b-freitext-beschriftung" placeholder="z. B. Anmerkung">
+        </div>
+        <div>
+          <label class="feldname" for="b-freitext-platzhalter">Hinweis im leeren Feld</label>
+          <input type="text" id="b-freitext-platzhalter" placeholder="z. B. Was soll zusätzlich beachtet werden?">
+        </div>
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname">Eingabefelder</label>
+      <p class="blatt-text" style="margin:0 0 10px;font-size:13px">
+        Enthält die Anweisung eckige Platzhalter wie <span style="font-family:var(--mono)">[Firma, Ort]</span>,
+        fragt der Prüfstand sie beim Ablegen ab und setzt sie ein. Beim Import werden sie automatisch erkannt.</p>
+      <div id="b-felder"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+        <button class="knopf leise klein" id="b-feld-neu">Feld hinzufügen</button>
+        <button class="knopf leise klein" id="b-feld-erkennen">Aus Anweisung erkennen</button>
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname">Referenzdateien</label>
+      <p class="blatt-text" style="margin:0 0 10px;font-size:13px">
+        Nachschlagematerial, das jedem Auftrag dieses Moduls beigelegt wird — Normen,
+        Vordrucke, Vorlagen. PDF, XLSX, DOCX und Text bleiben im Originalformat.</p>
+      <div id="b-wissen"></div>
+      <div id="b-fehlende"></div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <input type="file" id="b-wissen-datei" multiple style="width:auto">
+        <span id="b-wissen-status" style="font-size:13px;color:var(--grafit)"></span>
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <label class="schalter"><input type="checkbox" id="b-aktiv"> Im Prüfstand freischalten</label>
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="knopf" id="b-speichern">Änderungen speichern</button>
+      <button class="knopf leise" id="b-zurueck">Zurück</button>
+      <button class="knopf leise" id="b-loeschen" style="margin-left:auto">Modul löschen</button>
+    </div>
+    <p class="meldung versteckt" id="b-meldung"></p>
+  </section>
+
+  <!-- Import -->
+  <section class="blatt versteckt" id="blatt-import">
+    <h2 class="blatt-titel">Import aus claude.ai</h2>
+    <p class="blatt-text">Holt alle Projekte deiner Organisation samt Anweisungen und Referenzdateien
+       herüber. Es wird nichts ungefragt freigeschaltet — importierte Module sind zunächst
+       abgeschaltet und erscheinen erst im Prüfstand, wenn du sie unter „Module" freigibst.</p>
+
+    <div class="kasten">
+      <h3>Direkt übertragen — mit allen Dateien</h3>
+      <p class="erklaerung">
+        Holt Anweisung, Kontextdokumente <strong>und die hochgeladenen Projektdateien im
+        Originalformat</strong> herüber. Jedes Projekt einzeln, damit große PDFs nicht stören.
+      </p>
+      <p class="erklaerung">
+        1. <strong>claude.ai</strong> in einem eingeloggten Tab öffnen.<br>
+        2. Entwicklerkonsole öffnen — Mac <span style="font-family:var(--mono)">⌥⌘J</span>,
+           Windows <span style="font-family:var(--mono)">F12</span> → Reiter „Console".<br>
+        3. Befehl einfügen, Eingabetaste. Der Fortschritt läuft dort mit
+           (<span style="font-family:var(--mono)">12/132 Projektname (3 Datei(en))</span>).
+      </p>
+      <pre class="schnipsel" id="import-direkt">wird geladen …</pre>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap;align-items:center">
+        <button class="knopf klein" id="direkt-kopieren">Befehl kopieren</button>
+        <button class="knopf leise klein" id="modulliste-neu">Danach: Module neu laden</button>
+      </div>
+      <p class="meldung versteckt" id="import-meldung"></p>
+    </div>
+
+    <details class="kasten">
+      <summary style="cursor:pointer;font-weight:600;font-size:15px">Rückfallweg über die Zwischenablage</summary>
+      <p class="erklaerung" style="margin-top:12px">
+        Nur nötig, wenn der Prüfstand von claude.ai aus nicht erreichbar ist — etwa im reinen
+        Heimnetzbetrieb. Überträgt <strong>keine</strong> Projektdateien, nur Anweisungen und
+        Kontextdokumente.</p>
+      <pre class="schnipsel" id="import-schnipsel">wird geladen …</pre>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <button class="knopf leise klein" id="schnipsel-kopieren">Befehl kopieren</button>
+      </div>
+      <p class="erklaerung" style="margin-top:14px">Ergebnis hier einfügen:</p>
+      <textarea id="import-einfuegen" rows="3" placeholder="Hier einfügen …"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">
+        <button class="knopf leise klein" id="import-uebernehmen">Übernehmen</button>
+        <span style="color:var(--grafit);font-size:13px">oder als Datei:</span>
+        <input type="file" id="import-datei" accept="application/json,.json" style="width:auto">
+      </div>
+    </details>
+  </section>
+
+  <!-- Referenzdateien -->
+  <section class="blatt versteckt" id="blatt-wissen">
+    <h2 class="blatt-titel">Referenzdateien</h2>
+    <p class="blatt-text">Zentral abgelegtes Nachschlagematerial. Dasselbe Dokument an mehreren Modulen
+       liegt nur einmal auf der Platte und wird jedem Auftrag des Moduls beigelegt.</p>
+    <div id="wissenliste"></div>
+  </section>
+
+  <!-- Einstellungen -->
+  <section class="blatt versteckt" id="blatt-einstellungen">
+    <h2 class="blatt-titel">Einstellungen</h2>
+    <p class="blatt-text">Gelten für alle Module, sofern das Modul nichts Eigenes festlegt.</p>
+
+    <div class="gruppe zwei">
+      <div>
+        <label class="feldname" for="e-modell">Standardmodell</label>
+        <select id="e-modell">
+          <option value="sonnet">Sonnet — schnell, günstig</option>
+          <option value="opus">Opus — stärkste Ergebnisse</option>
+          <option value="haiku">Haiku — sehr schnell, einfache Aufgaben</option>
+        </select>
+      </div>
+      <div>
+        <label class="feldname" for="e-parallel">Gleichzeitige Aufträge</label>
+        <input type="number" id="e-parallel" min="1" max="8">
+      </div>
+      <div>
+        <label class="feldname" for="e-zeitlimit">Zeitlimit (Sekunden)</label>
+        <input type="number" id="e-zeitlimit" min="30" max="7200">
+      </div>
+      <div>
+        <label class="feldname" for="e-aufbewahrung">Aufträge aufbewahren (Tage)</label>
+        <input type="number" id="e-aufbewahrung" min="0" max="3650">
+      </div>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="e-werkzeuge">Erlaubte Werkzeuge</label>
+      <input type="text" id="e-werkzeuge" placeholder="Read,Glob,Grep,Bash">
+      <p class="blatt-text" style="margin-top:6px;font-size:13px">
+        Bestimmt, was das Modell beim Bearbeiten darf. <strong>Read</strong> liest Dateien
+        (auch PDF), <strong>Bash</strong> wird für Tabellen wie XLSX gebraucht. Weglassen von Bash
+        macht die Verarbeitung enger, aber auch eingeschränkter.</p>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="e-startanweisung">Startanweisung</label>
+      <textarea id="e-startanweisung" rows="6"></textarea>
+      <p class="blatt-text" style="margin-top:6px;font-size:13px">
+        Der Satz, mit dem jeder Auftrag beginnt — quasi das, was du sonst in den Chat tippen würdest.</p>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="e-zugang">Zugang zum Prüfstand</label>
+      <select id="e-zugang">
+        <option value="offen">Offen — jeder im Netz darf Dateien ablegen</option>
+        <option value="passwort">Passwort — auch zum Ablegen nötig</option>
+      </select>
+      <p class="blatt-text" style="margin-top:6px;font-size:13px">
+        „Offen" ist für das Heimnetz gedacht und macht den Alltag schnell.
+        <strong>Sobald der Prüfstand aus dem Internet erreichbar ist — etwa über einen
+        Cloudflare-Tunnel — muss hier „Passwort" stehen</strong>, sonst könnte jeder mit
+        der Adresse Aufträge auf deine Kosten starten und alle Ergebnisse mitlesen.</p>
+    </div>
+
+    <div class="gruppe">
+      <label class="feldname" for="e-passwort">Neues Admin-Passwort</label>
+      <input type="password" id="e-passwort" placeholder="leer lassen = unverändert" autocomplete="new-password">
+    </div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="knopf" id="e-speichern">Einstellungen speichern</button>
+      <button class="knopf leise" id="e-aufraeumen">Alte Aufträge jetzt aufräumen</button>
+    </div>
+    <p class="meldung versteckt" id="e-meldung"></p>
+  </section>
+</div>
+
+<script src="admin.js"></script>
+</body>
+</html>

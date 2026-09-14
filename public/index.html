@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="de" data-thema="">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Prüfstand — Teusan Forest Consult</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="stil.css">
+</head>
+<body>
+
+<header class="kopf">
+  <h1 class="marke">Prüfstand</h1>
+  <span class="marke-sub">Teusan Forest Consult international</span>
+  <div class="kopf-rechts">
+    <button class="knopf leise klein" id="thema-knopf" title="Hell oder dunkel">Ansicht</button>
+    <a class="knopf leise klein" href="admin.html">Admin-Center</a>
+  </div>
+</header>
+
+<!-- Ersteinrichtung: erscheint nur, solange kein Admin-Passwort gesetzt ist -->
+<section class="tor versteckt" id="einrichtung">
+  <h2>Prüfstand einrichten</h2>
+  <p>Lege ein Passwort für das Admin-Center fest. Damit schaltest du Module frei und
+     änderst Anweisungen. Das Ablegen von Dateien bleibt ohne Passwort möglich.</p>
+  <label class="feldname" for="neues-passwort">Passwort (mind. 8 Zeichen)</label>
+  <input type="password" id="neues-passwort" autocomplete="new-password">
+  <button class="knopf breit" id="einrichten-knopf">Passwort festlegen</button>
+  <p class="meldung versteckt" id="einrichtung-fehler"></p>
+</section>
+
+<!-- Anmeldung: erscheint nur, wenn der Zugang auf "Passwort" steht -->
+<section class="tor versteckt" id="anmeldung">
+  <h2>Anmelden</h2>
+  <p>Dieser Prüfstand ist passwortgeschützt.</p>
+  <label class="feldname" for="passwort">Passwort</label>
+  <input type="password" id="passwort" autocomplete="current-password">
+  <button class="knopf breit" id="anmelden-knopf">Anmelden</button>
+  <p class="meldung versteckt" id="anmelde-fehler"></p>
+</section>
+
+<main class="raster" id="hauptbereich">
+
+  <!-- Linke Spalte: Ablage -->
+  <section class="ablage">
+    <p class="marke-klein">Ablage</p>
+
+    <div class="feld" id="ablagefeld" tabindex="0" role="button"
+         aria-label="Dateien auswählen oder hierher ziehen">
+      <div class="feld-titel">Datei hierher ziehen</div>
+      <div class="feld-hinweis">oder klicken zum Auswählen</div>
+    </div>
+    <input type="file" id="dateiwahl" multiple class="versteckt">
+    <ul class="liste-dateien" id="dateiliste"></ul>
+
+    <div class="module">
+      <p class="marke-klein">Modul</p>
+      <div class="modul-liste" id="modulliste"></div>
+    </div>
+
+    <!-- Erscheint nur bei Modulen, deren Anweisung Platzhalter enthält -->
+    <div class="module versteckt" id="angaben-bereich">
+      <p class="marke-klein">Angaben</p>
+      <div id="angabenfelder"></div>
+    </div>
+
+    <!-- Freies Textfeld — das, was früher in den Chat getippt wurde -->
+    <div class="module versteckt" id="freitext-bereich">
+      <p class="marke-klein" id="freitext-marke">Anmerkung</p>
+      <textarea id="freitext" rows="4"></textarea>
+    </div>
+
+    <button class="knopf breit" id="start-knopf" disabled>Verarbeitung starten</button>
+    <p class="meldung versteckt" id="ablage-meldung"></p>
+  </section>
+
+  <!-- Rechte Spalte: Laufzettel -->
+  <section class="laufzettel">
+    <div class="zettel-kopf">
+      <p class="marke-klein" style="margin:0">Laufzettel</p>
+      <span class="zaehler" id="zaehler"></span>
+    </div>
+    <div id="auftragsliste"></div>
+  </section>
+
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>

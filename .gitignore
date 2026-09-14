@@ -1,0 +1,6 @@
+# Hier liegt ausschliesslich Programmcode.
+# Daten, Module, Referenzdateien und Zugaenge bleiben auf der Synology.
+daten/
+.env
+*.log
+.DS_Store

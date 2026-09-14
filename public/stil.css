@@ -1,0 +1,443 @@
+/* ============================================================
+   Prüfstand — Teusan Forest Consult international
+   Farbrollen:
+     siegel      nur für Konformität / fertige Ergebnisse
+     signal      nur für laufende Verarbeitung
+     abweichung  nur für Fehler und Abbrüche
+   Alles andere bleibt Papier, Tinte, Graphit.
+   ============================================================ */
+
+:root {
+  --papier:     #F7F6F2;
+  --karton:     #FFFFFF;
+  --tinte:      #201F1C;
+  --grafit:     #6B6A64;
+  --linie:      #DEDCD4;
+  --linie-fein: #EDEBE4;
+  --siegel:     #2F6B3F;
+  --siegel-weich: #E6EFE7;
+  --signal:     #B4610E;
+  --signal-weich: #F7EBDD;
+  --abweichung: #9B2C2C;
+  --abweichung-weich: #F6E6E5;
+
+  --sans:  "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono:  "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --serif: "IBM Plex Serif", Georgia, "Times New Roman", serif;
+
+  --rand: 3px;
+  --schatten: 0 1px 2px rgba(32,31,28,.05), 0 4px 16px rgba(32,31,28,.04);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-thema="hell"]) {
+    --papier:     #161614;
+    --karton:     #1E1E1B;
+    --tinte:      #EDEBE4;
+    --grafit:     #9B998F;
+    --linie:      #33322D;
+    --linie-fein: #262622;
+    --siegel:     #7FB98C;
+    --siegel-weich: #1D2A20;
+    --signal:     #E09A4F;
+    --signal-weich: #2B2118;
+    --abweichung: #E08381;
+    --abweichung-weich: #2C1D1D;
+    --schatten: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+  }
+}
+
+[data-thema="dunkel"] {
+  --papier:     #161614;
+  --karton:     #1E1E1B;
+  --tinte:      #EDEBE4;
+  --grafit:     #9B998F;
+  --linie:      #33322D;
+  --linie-fein: #262622;
+  --siegel:     #7FB98C;
+  --siegel-weich: #1D2A20;
+  --signal:     #E09A4F;
+  --signal-weich: #2B2118;
+  --abweichung: #E08381;
+  --abweichung-weich: #2C1D1D;
+  --schatten: 0 1px 2px rgba(0,0,0,.3), 0 4px 16px rgba(0,0,0,.2);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--papier);
+  color: var(--tinte);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- Kopfzeile ---------- */
+
+.kopf {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--linie);
+  background: var(--karton);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  flex-wrap: wrap;
+}
+
+.marke {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .22em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.marke-sub {
+  font-size: 12px;
+  color: var(--grafit);
+  letter-spacing: .02em;
+}
+
+.kopf-rechts {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------- Grundraster ---------- */
+
+.raster {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: 0;
+  min-height: calc(100vh - 61px);
+  align-items: start;
+}
+
+.ablage {
+  padding: 24px 24px 40px;
+  border-right: 1px solid var(--linie);
+  position: sticky;
+  top: 61px;
+  max-height: calc(100vh - 61px);
+  overflow-y: auto;
+}
+
+.laufzettel { padding: 24px 28px 60px; min-width: 0; }
+
+@media (max-width: 900px) {
+  .raster { grid-template-columns: 1fr; }
+  .ablage { position: static; max-height: none; border-right: 0; border-bottom: 1px solid var(--linie); }
+}
+
+/* ---------- Abschnittsmarken ---------- */
+
+.marke-klein {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--grafit);
+  margin: 0 0 10px;
+}
+
+/* ---------- Ablagefeld ---------- */
+
+.feld {
+  border: 1.5px dashed var(--linie);
+  border-radius: var(--rand);
+  background: var(--karton);
+  padding: 30px 20px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+
+.feld:hover, .feld:focus-visible { border-color: var(--grafit); }
+
+.feld.bereit {
+  border-color: var(--siegel);
+  border-style: solid;
+  background: var(--siegel-weich);
+}
+
+.feld-titel { font-weight: 600; margin-bottom: 4px; }
+.feld-hinweis { font-size: 13px; color: var(--grafit); }
+
+.liste-dateien { list-style: none; margin: 12px 0 0; padding: 0; }
+
+.liste-dateien li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 6px 8px;
+  border: 1px solid var(--linie-fein);
+  border-radius: var(--rand);
+  margin-bottom: 4px;
+  background: var(--karton);
+}
+
+.liste-dateien .groesse { margin-left: auto; color: var(--grafit); }
+
+.weg {
+  border: 0; background: none; cursor: pointer;
+  color: var(--grafit); font-size: 16px; line-height: 1; padding: 0 2px;
+}
+.weg:hover { color: var(--abweichung); }
+
+/* ---------- Modulauswahl ---------- */
+
+.module { margin-top: 26px; }
+.modul-liste { display: flex; flex-direction: column; gap: 2px; }
+
+.modul {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--rand);
+  cursor: pointer;
+  text-align: left;
+  background: none;
+  font: inherit;
+  color: inherit;
+  width: 100%;
+}
+
+.modul:hover { background: var(--linie-fein); }
+
+.modul[aria-pressed="true"] {
+  border-color: var(--tinte);
+  background: var(--karton);
+}
+
+.modul-punkt {
+  width: 8px; height: 8px; border-radius: 50%;
+  border: 1.5px solid var(--grafit);
+  flex: none;
+}
+
+.modul[aria-pressed="true"] .modul-punkt {
+  background: var(--tinte);
+  border-color: var(--tinte);
+}
+
+.modul-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.modul-zahl { margin-left: auto; font-family: var(--mono); font-size: 11px; color: var(--grafit); flex: none; }
+
+/* ---------- Knöpfe ---------- */
+
+.knopf {
+  font-family: var(--sans);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: var(--rand);
+  border: 1px solid var(--tinte);
+  background: var(--tinte);
+  color: var(--papier);
+  cursor: pointer;
+  transition: opacity .15s;
+}
+
+.knopf:hover:not(:disabled) { opacity: .85; }
+.knopf:disabled { opacity: .35; cursor: not-allowed; }
+.knopf.breit { width: 100%; margin-top: 18px; }
+
+.knopf.leise {
+  background: none;
+  color: var(--tinte);
+  border-color: var(--linie);
+  font-weight: 500;
+}
+.knopf.leise:hover:not(:disabled) { border-color: var(--grafit); opacity: 1; }
+
+.knopf.klein { font-size: 12px; padding: 5px 11px; }
+
+a.knopf { text-decoration: none; display: inline-block; }
+
+:focus-visible { outline: 2px solid var(--signal); outline-offset: 2px; }
+
+/* ---------- Laufzettel ---------- */
+
+.zettel-kopf {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.zaehler {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--grafit);
+  letter-spacing: .08em;
+}
+
+.auftrag {
+  display: grid;
+  grid-template-columns: 3px minmax(0, 1fr);
+  background: var(--karton);
+  border: 1px solid var(--linie);
+  border-radius: var(--rand);
+  margin-bottom: 10px;
+  overflow: hidden;
+  box-shadow: var(--schatten);
+}
+
+/* Die Schiene links ist das Kernmotiv: sie zeigt die Station des Auftrags. */
+.schiene { background: var(--linie); }
+.auftrag[data-status="wartet"]      .schiene { background: var(--grafit); }
+.auftrag[data-status="laeuft"]      .schiene { background: var(--signal); animation: puls 1.6s ease-in-out infinite; }
+.auftrag[data-status="fertig"]      .schiene { background: var(--siegel); }
+.auftrag[data-status="fehler"]      .schiene { background: var(--abweichung); }
+.auftrag[data-status="abgebrochen"] .schiene { background: var(--grafit); }
+
+@keyframes puls { 0%,100% { opacity: 1 } 50% { opacity: .3 } }
+@media (prefers-reduced-motion: reduce) { .schiene { animation: none !important } }
+
+.auftrag-inhalt { padding: 13px 16px; min-width: 0; }
+
+.auftrag-zeile {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.auftrag-modul {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.auftrag-datei {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--grafit);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.zustand {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 2px;
+  flex: none;
+}
+
+[data-status="wartet"]      .zustand { background: var(--linie-fein);      color: var(--grafit); }
+[data-status="laeuft"]      .zustand { background: var(--signal-weich);    color: var(--signal); }
+[data-status="fertig"]      .zustand { background: var(--siegel-weich);    color: var(--siegel); }
+[data-status="fehler"]      .zustand { background: var(--abweichung-weich);color: var(--abweichung); }
+[data-status="abgebrochen"] .zustand { background: var(--linie-fein);      color: var(--grafit); }
+
+.auftrag-fuss {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--grafit);
+  flex-wrap: wrap;
+}
+
+.auftrag-fuss .rechts { margin-left: auto; display: flex; gap: 6px; }
+
+/* Der Befund: gesetzt wie das Dokument, in das er später gehört. */
+.befund {
+  margin-top: 12px;
+  padding: 18px 20px;
+  background: var(--papier);
+  border-top: 1px solid var(--linie);
+  border-radius: 2px;
+  font-family: var(--serif);
+  font-size: 15px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.meldung {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--rand);
+  font-size: 13px;
+  background: var(--abweichung-weich);
+  color: var(--abweichung);
+}
+
+.meldung.hinweis { background: var(--signal-weich); color: var(--signal); }
+
+/* ---------- Leerer Zustand ---------- */
+
+.leer {
+  border: 1px dashed var(--linie);
+  border-radius: var(--rand);
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--grafit);
+}
+
+.leer-titel { font-weight: 600; color: var(--tinte); margin-bottom: 6px; }
+
+/* ---------- Einrichtung / Anmeldung ---------- */
+
+.tor {
+  max-width: 380px;
+  margin: 12vh auto;
+  padding: 32px;
+  background: var(--karton);
+  border: 1px solid var(--linie);
+  border-radius: var(--rand);
+  box-shadow: var(--schatten);
+}
+
+.tor h2 { margin: 0 0 6px; font-size: 19px; }
+.tor p { margin: 0 0 20px; color: var(--grafit); font-size: 14px; }
+
+label.feldname {
+  display: block;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--grafit);
+  margin-bottom: 5px;
+}
+
+input[type="text"], input[type="password"], input[type="number"], select, textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border: 1px solid var(--linie);
+  border-radius: var(--rand);
+  background: var(--karton);
+  color: var(--tinte);
+  font-family: var(--sans);
+  font-size: 14px;
+}
+
+textarea { font-family: var(--mono); font-size: 12.5px; line-height: 1.6; resize: vertical; }
+
+input:focus, select:focus, textarea:focus { border-color: var(--grafit); outline-offset: 1px; }
+
+.versteckt { display: none !important; }
