@@ -2,7 +2,7 @@ import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { PORT, HOST, OEFFENTLICH, MAX_UPLOAD, CLAUDE_BIN } from './config.js';
+import { WURZEL, PORT, HOST, OEFFENTLICH, MAX_UPLOAD, CLAUDE_BIN } from './config.js';
 import {
   id, kennung,
   sitzungenLesen, sitzungenSchreiben,
@@ -12,7 +12,7 @@ import {
   auftragLesen, auftragSchreiben, auftraegeListe, auftragLoeschen,
   auftragOrdner, auftraegeAufraeumen
 } from './store.js';
-import { wecken, abbrechen, beimStartAufraeumen } from './worker.js';
+import { wecken, abbrechen, beimStartAufraeumen, istBeschaeftigt } from './worker.js';
 
 /* ---------------- Anmeldung ---------------- */
 
@@ -680,6 +680,35 @@ http.createServer((req, res) => { behandeln(req, res); }).listen(PORT, HOST, () 
   if (!e.adminPasswort) console.log('Noch nicht eingerichtet - beim ersten Aufruf Admin-Passwort setzen.');
   wecken();
 });
+
+/* Der Programmcode kommt aus dem Repository und wird dort von git ersetzt,
+   nicht ueberschrieben. Dabei verliert die Selbstueberwachung von "node --watch"
+   die Beobachtung, und ein Update kaeme nie an. Deshalb prueft der Dienst
+   selbst, ob sein Quelltext neuer ist als beim Start, und beendet sich dann -
+   der Container startet ihn wieder (restart: unless-stopped).
+   Laufende Auftraege werden abgewartet; unterbrochene wuerden zwar neu
+   eingereiht, aber die Arbeit waere umsonst. */
+const QUELLORDNER = path.join(WURZEL, 'server');
+
+function quellStand() {
+  let neuster = 0;
+  try {
+    for (const f of fs.readdirSync(QUELLORDNER)) {
+      if (!f.endsWith('.js')) continue;
+      try { neuster = Math.max(neuster, fs.statSync(path.join(QUELLORDNER, f)).mtimeMs); } catch {}
+    }
+  } catch { /* Ordner nicht lesbar - dann eben kein Selbstneustart */ }
+  return neuster;
+}
+
+const STAND_BEIM_START = quellStand();
+
+setInterval(() => {
+  if (quellStand() <= STAND_BEIM_START) return;
+  if (istBeschaeftigt()) return;          // erst fertig arbeiten lassen
+  console.log('Neuer Programmstand erkannt - Dienst startet neu.');
+  process.exit(0);
+}, 20000).unref();
 
 // Alte Auftraege einmal taeglich aufraeumen.
 setInterval(() => { try { auftraegeAufraeumen(); } catch {} }, 24 * 3600 * 1000).unref();

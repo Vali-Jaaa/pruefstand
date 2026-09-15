@@ -28,6 +28,12 @@ export function beimStartAufraeumen() {
   return zurueck;
 }
 
+/** Laeuft oder wartet gerade etwas? Wird vor einem Neustart gefragt. */
+export function istBeschaeftigt() {
+  if (arbeitetGerade > 0) return true;
+  return auftraegeListe({ limit: 100000 }).some(a => a.status === 'wartet' || a.status === 'laeuft');
+}
+
 export function wecken() {
   if (geweckt) return;
   geweckt = true;
