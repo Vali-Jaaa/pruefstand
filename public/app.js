@@ -356,6 +356,28 @@ function auftragZeichnen(a) {
   const rechts = document.createElement('div');
   rechts.className = 'rechts';
 
+  /* Vom Lauf erzeugte Dateien - ausgefuellte Tabellen, Berichte. Die sind oft
+     das eigentliche Ergebnis, deshalb stehen sie vor den Textknoepfen. */
+  for (const d of a.ausgabe || []) {
+    const knopf = text(document.createElement('button'), `${d.name} (${bytesLesbar(d.bytes)})`);
+    knopf.className = 'knopf klein';
+    knopf.onclick = async () => {
+      try {
+        const antwort = await fetch(`/api/auftrag/${a.id}/datei/${encodeURIComponent(d.name)}`,
+          { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+        if (!antwort.ok) throw new Error(`Fehler ${antwort.status}`);
+        const ziel = URL.createObjectURL(await antwort.blob());
+        const link = Object.assign(document.createElement('a'), { href: ziel, download: d.name });
+        document.body.append(link); link.click(); link.remove();
+        setTimeout(() => URL.revokeObjectURL(ziel), 5000);
+      } catch {
+        knopf.textContent = 'Fehlgeschlagen';
+        setTimeout(() => { knopf.textContent = `${d.name} (${bytesLesbar(d.bytes)})`; }, 1800);
+      }
+    };
+    rechts.append(knopf);
+  }
+
   if (a.status === 'fertig') {
     const kopieren = text(document.createElement('button'), 'Text kopieren');
     kopieren.className = 'knopf leise klein';
@@ -446,7 +468,7 @@ async function auftraegeLaden() {
   catch { return; }
 
   // Nur neu zeichnen, wenn sich etwas geändert hat - sonst springt die Auswahl.
-  const stand = JSON.stringify(liste.map(a => [a.id, a.status, a.vorschau]));
+  const stand = JSON.stringify(liste.map(a => [a.id, a.status, a.vorschau, (a.ausgabe || []).length]));
   if (stand === letzterStand) {
     // Laufzeiten trotzdem mitzählen.
     for (const a of liste.filter(x => x.status === 'laeuft')) {

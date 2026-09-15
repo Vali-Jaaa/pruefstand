@@ -83,13 +83,82 @@ function arbeitsordnerBauen(auftrag, profil) {
   if (wissen.length) {
     const wdir = path.join(arbeit, 'wissen');
     fs.mkdirSync(wdir, { recursive: true });
+    const verzeichnis = [];
     for (const w of wissen) {
       const inhalt = wissenLesen(w.hash);
       if (inhalt == null) continue;
-      fs.writeFileSync(path.join(wdir, wissenDateiname(w)), inhalt);
+      const name = wissenDateiname(w);
+      fs.writeFileSync(path.join(wdir, name), inhalt);
+      const groesse = w.zeichen
+        ? `${Math.round(w.zeichen / 1000)} Tsd. Zeichen`
+        : `${Math.round((w.bytes || inhalt.length) / 1024)} kB`;
+      verzeichnis.push(`- ${name}  (${groesse})`);
+    }
+    /* Ein Inhaltsverzeichnis erspart das Durchsuchen des Ordners. Ohne diesen
+       Hinweis liest Claude die Nachschlagewerke der Reihe nach komplett durch,
+       bevor es ueberhaupt anfaengt - bei drei Normen-PDFs sind das Dutzende
+       zusaetzlicher Runden und mehrere Minuten. */
+    if (verzeichnis.length) {
+      fs.writeFileSync(path.join(wdir, 'INHALT.txt'),
+        'Nachschlagewerke zu diesem Modul:\n\n' + verzeichnis.join('\n') +
+        '\n\nDiese Dateien sind zum Nachschlagen da, nicht zum Durchlesen.\n');
     }
   }
   return arbeit;
+}
+
+/* Erzeugt die Verarbeitung Dateien - eine ausgefuellte Tabelle, ein Bericht als
+   Word-Dokument -, dann liegen sie im Arbeitsordner und waeren beim naechsten
+   Lauf weg. Hier werden sie in Sicherheit gebracht.
+   Nicht mitgenommen wird, was wir selbst hineingelegt haben. */
+function ausgabedateienSichern(aid, arbeit) {
+  const ziel = path.join(auftragOrdner(aid), 'ausgabe');
+  fs.rmSync(ziel, { recursive: true, force: true });
+
+  const gefunden = [];
+  const durchgehen = (ordner, tiefe = 0) => {
+    if (tiefe > 4) return;
+    let eintraege = [];
+    try { eintraege = fs.readdirSync(ordner, { withFileTypes: true }); } catch { return; }
+    for (const e of eintraege) {
+      // Eigene Zulieferungen und Arbeitsspuren von Claude Code ueberspringen.
+      if (e.name.startsWith('.')) continue;
+      if (tiefe === 0 && (e.name === 'eingabe' || e.name === 'wissen')) continue;
+      const voll = path.join(ordner, e.name);
+      if (e.isDirectory()) { durchgehen(voll, tiefe + 1); continue; }
+      if (!e.isFile()) continue;
+      try {
+        const stat = fs.statSync(voll);
+        if (!stat.size) continue;
+        gefunden.push({ voll, name: e.name, bytes: stat.size });
+      } catch { /* verschwunden - ueberspringen */ }
+    }
+  };
+  durchgehen(arbeit);
+
+  if (!gefunden.length) return [];
+
+  fs.mkdirSync(ziel, { recursive: true });
+  const abgelegt = [];
+  const vergeben = new Set();
+  for (const f of gefunden) {
+    // Gleiche Namen aus verschiedenen Unterordnern unterscheidbar halten.
+    let name = f.name.replace(/[/\\]/g, '_');
+    if (vergeben.has(name)) {
+      const punkt = name.lastIndexOf('.');
+      const basis = punkt > 0 ? name.slice(0, punkt) : name;
+      const endung = punkt > 0 ? name.slice(punkt) : '';
+      let n = 2;
+      while (vergeben.has(`${basis}-${n}${endung}`)) n++;
+      name = `${basis}-${n}${endung}`;
+    }
+    vergeben.add(name);
+    try {
+      fs.copyFileSync(f.voll, path.join(ziel, name));
+      abgelegt.push({ name, bytes: f.bytes });
+    } catch { /* nicht lesbar - weglassen */ }
+  }
+  return abgelegt;
 }
 
 function ausfuehren(aid) {
@@ -243,6 +312,7 @@ function ausfuehren(aid) {
 
       a.status    = 'fertig';
       a.ergebnis  = daten.result || '';
+      a.ausgabe   = ausgabedateienSichern(aid, arbeit);
       a.kosten    = daten.total_cost_usd ?? null;
       a.schritte  = daten.num_turns ?? null;
       a.verbrauch = daten.usage

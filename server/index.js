@@ -90,6 +90,14 @@ function koerperLesen(req, grenze = MAX_UPLOAD) {
 }
 
 const MIME = {
+  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  '.pdf':  'application/pdf',
+  '.csv':  'text/csv; charset=utf-8',
+  '.md':   'text/markdown; charset=utf-8',
+  '.txt':  'text/plain; charset=utf-8',
+  '.png':  'image/png',
   '.html': 'text/html; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
@@ -515,6 +523,7 @@ async function behandeln(req, res) {
         .map(a => ({
           id: a.id, profil: a.profil, profilName: a.profilName, status: a.status,
           dateien: (a.dateien || []).map(d => d.name),
+          ausgabe: a.ausgabe || [],
           angelegt: a.angelegt, beendet: a.beendet, dauerSek: a.dauerSek,
           fehler: a.fehler, hinweis: a.hinweis,
           vorschau: a.ergebnis ? a.ergebnis.slice(0, 180) : null
@@ -560,6 +569,30 @@ async function behandeln(req, res) {
     if (pfad.startsWith('/api/auftrag/') && pfad.endsWith('/abbrechen') && m === 'POST') {
       const aid = pfad.slice('/api/auftrag/'.length, -'/abbrechen'.length);
       return antwort(res, 200, { ok: abbrechen(aid) });
+    }
+
+    /* Vom Lauf erzeugte Datei ausliefern - eine ausgefuellte Tabelle etwa.
+       Der Name kommt aus der Adresszeile, darf also nicht aus dem Ordner
+       herausfuehren: es wird ausschliesslich ausgeliefert, was im Auftrag
+       auch verzeichnet ist. */
+    if (pfad.startsWith('/api/auftrag/') && pfad.includes('/datei/') && m === 'GET') {
+      const [aid, ...rest] = pfad.slice('/api/auftrag/'.length).split('/datei/');
+      const wunsch = decodeURIComponent(rest.join('/datei/'));
+      const a = auftragLesen(aid);
+      const eintrag = (a?.ausgabe || []).find(x => x.name === wunsch);
+      if (!eintrag) return antwort(res, 404, { fehler: 'Datei gehoert nicht zu diesem Auftrag.' });
+
+      const datei = path.join(auftragOrdner(aid), 'ausgabe', eintrag.name);
+      if (!path.resolve(datei).startsWith(path.resolve(auftragOrdner(aid))) || !fs.existsSync(datei)) {
+        return antwort(res, 404, { fehler: 'Datei nicht gefunden.' });
+      }
+      res.writeHead(200, {
+        'Content-Type': MIME[path.extname(datei)] || 'application/octet-stream',
+        'Content-Length': eintrag.bytes,
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(eintrag.name)}`,
+        'Cache-Control': 'no-store'
+      });
+      return fs.createReadStream(datei).pipe(res);
     }
 
     if (pfad.startsWith('/api/auftrag/') && pfad.endsWith('/ergebnis') && m === 'GET') {
